@@ -1,0 +1,30 @@
+name: Thu thap du lieu AQI Da Nang moi gio
+
+on:
+  schedule:
+    # Chay vao phut 0 moi gio (UTC) = moi gio VN, lech 7 tieng
+    - cron: "0 * * * *"
+  workflow_dispatch: # Cho phep bam nut "Run workflow" de chay thu tay bat cu luc nao
+
+jobs:
+  fetch-aqi:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cai dat dependencies
+        working-directory: backend
+        run: npm install
+
+      - name: Chay script lay du lieu AQI va luu vao Supabase
+        working-directory: backend
+        env:
+          IQAIR_API_KEY: ${{ secrets.IQAIR_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: node collector/jobs/fetchAndStore.js
