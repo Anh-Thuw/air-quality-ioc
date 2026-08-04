@@ -1,0 +1,33 @@
+services:
+
+  grafana:
+    image: grafana/grafana-oss:latest
+
+    container_name: grafana
+
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+
+      # Cho phép iframe
+      GF_SECURITY_ALLOW_EMBEDDING: "true"
+
+    volumes:
+
+      # Lưu dữ liệu Grafana
+      - grafana-storage:/var/lib/grafana
+
+      # Datasource provisioning
+      - ./grafana/provisioning:/etc/grafana/provisioning
+
+      # Dashboard JSON
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+
+volumes:
+
+  grafana-storage:
