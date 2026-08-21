@@ -1,5 +1,11 @@
 import * as StationsModel from "../models/stationsModel.js";
-import { getAqiLevelAndColor } from "../utils/aqiHelper.js";
+import pool from "../../config/db.js";
+import {
+    getAqiLevelAndColor,
+    getAqiLevelVN,
+    getPollutantLabel,
+    ACTIVE_THRESHOLD_MINUTES,
+} from "../utils/aqiHelper.js";
 
 export async function listStations(req, res) {
     try {
@@ -26,9 +32,68 @@ export async function listMapStations(req, res) {
 
 export async function getStation(req, res) {
     try {
-        const station = await StationsModel.getStationById(req.params.id);
-        if (!station) return res.status(404).json({ error: "Khong tim thay tram" });
-        res.json(station);
+        const stationId = req.params.id;
+        const { rows: stationRows } = await pool.query(
+            `SELECT id, name, city, state AS province, country, latitude, longitude FROM stations WHERE id = $1`,
+            [stationId]
+        );
+        if (stationRows.length === 0) return res.status(404).json({ error: "Khong tim thay tram" });
+        const station = stationRows[0];
+
+        const { rows: pollutionRows } = await pool.query(
+            `SELECT ts, aqius, aqicn, mainus, p1, p2, o3, n2, s2, co, fetched_at
+       FROM pollution_readings WHERE station_id = $1 ORDER BY ts_vn DESC LIMIT 1`,
+            [stationId]
+        );
+        const { rows: weatherRows } = await pool.query(
+            `SELECT tp, hu, ws, fetched_at FROM weather_readings WHERE station_id = $1 ORDER BY ts_vn DESC LIMIT 1`,
+            [stationId]
+        );
+
+        const pollution = pollutionRows[0] || null;
+        const weather = weatherRows[0] || null;
+
+        const now = Date.now();
+        const isOnline = pollution?.fetched_at &&
+            now - new Date(pollution.fetched_at).getTime() < ACTIVE_THRESHOLD_MINUTES * 60000;
+
+        const { color } = getAqiLevelAndColor(pollution?.aqius);
+
+        res.json({
+            station: {
+                id: station.id,
+                name: station.name,
+                city: station.city,
+                province: station.province,
+                country: station.country,
+                latitude: station.latitude,
+                longitude: station.longitude,
+                status: isOnline ? "ONLINE" : "OFFLINE",
+                lastUpdated: pollution?.fetched_at || null,
+            },
+            aqi: {
+                value: pollution?.aqius ?? null,
+                category: getAqiLevelVN(pollution?.aqius).toUpperCase(), // spec vi du: "TRUNG BÌNH" (viet hoa)
+                color,
+                mainPollutant: getPollutantLabel(pollution?.mainus),
+            },
+            weather: {
+                temperature: weather?.tp ?? null,
+                humidity: weather?.hu ?? null,
+                windSpeed: weather?.ws ?? null,
+                uvIndex: null, // IQAir goi Community khong tra ve UV Index - luon null cho toi khi doi nguon/nang goi
+            },
+            pollutants: {
+                PM25: { value: pollution?.p2 ?? null, unit: "µg/m³" },
+                PM10: { value: pollution?.p1 ?? null, unit: "µg/m³" },
+                NO2: { value: pollution?.n2 ?? null, unit: "ppb" },
+                SO2: { value: pollution?.s2 ?? null, unit: "ppb" },
+                CO: { value: pollution?.co ?? null, unit: "ppm" },
+                O3: { value: pollution?.o3 ?? null, unit: "ppb" },
+                // Luu y: gia tri hien tai da so la null vi goi IQAir Community khong tra chi tiet tung chat.
+                // Cau truc van giu day du de khop dung shape API - se tu dong co gia tri that neu nang goi/doi nguon du lieu.
+            },
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
