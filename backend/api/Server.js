@@ -12,7 +12,6 @@ import forecastRoutes from "./routes/forecastRoutes.js";
 import systemRoutes from "./routes/systemRoutes.js";
 import systemV1Routes from "./routes/systemV1Routes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
-import authRoutes from "./routes/authRoutes.js";
 import { incrementRequestCount } from "./models/systemModel.js";
 
 const app = express();
@@ -37,7 +36,6 @@ app.use("/api/weather", weatherRoutes);
 app.use("/api/forecast", forecastRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api", systemRoutes); // /api/health, /api/system/*
-app.use("/api/v1/system", systemV1Routes); // nhom endpoint moi theo spec chi tiet
 
 app.use((req, res) => {
     res.status(404).json({ error: "Khong tim thay endpoint nay" });
