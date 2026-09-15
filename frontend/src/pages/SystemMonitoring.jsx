@@ -1,5 +1,4 @@
 import Topbar from "../components/Topbar";
-import GrafanaPanel from "../components/GrafanaPanel";
 import { DASHBOARDS } from "../config/panels.config";
 
 export default function SystemMonitoring() {
