@@ -1,7 +1,3 @@
-// Server chinh cho backend API - gop toan bo route lai theo dung danh sach endpoint yeu cau.
-// Chay: node api/server.js  (tu trong thu muc backend/)
-// Can cai: npm install express cors
-
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
@@ -17,7 +13,9 @@ import systemRoutes from "./routes/systemRoutes.js";
 import systemV1Routes from "./routes/systemV1Routes.js";
 import settingsRoutes from "./routes/settingsRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
+import apiKeyRoutes from "./routes/apiKeyRoutes.js";
 import { incrementRequestCount } from "./models/systemModel.js";
+import { verifyApiKey } from "./middleware/apiKeyMiddleware.js";
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -31,8 +29,12 @@ app.use((req, res, next) => {
     next();
 });
 
+// BAT BUOC API Key cho MOI request (tru /api/health, /api/auth/login, /api/admin/keys - xem middleware)
+app.use(verifyApiKey);
+
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/auth", authRoutes); // POST /api/auth/login
+app.use("/api/admin/keys", apiKeyRoutes); // Quan ly API Key - can JWT admin
 app.use("/api/stations", stationsRoutes);
 app.use("/api/map", mapRoutes);
 app.use("/api/air-quality", airQualityRoutes);
